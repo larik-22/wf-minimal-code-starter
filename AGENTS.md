@@ -1,6 +1,6 @@
 # Product Overview
 
-This is a Webflow integration project that enables TypeScript development for Webflow websites. The compiled code is hosted on a CDN and loaded into Webflow sites via custom code blocks.
+This is a a bun-based Webflow integration project that enables TypeScript development for Webflow websites. The compiled code is hosted on a CDN and loaded into Webflow sites via custom code blocks.
 
 ## Purpose
 

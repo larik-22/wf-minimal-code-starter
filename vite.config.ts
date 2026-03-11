@@ -1,15 +1,14 @@
-import { defineConfig } from 'vite'
-import eslintPlugin from 'vite-plugin-eslint'
+import { defineConfig } from "vite";
 
 // vite.config.js
 export default defineConfig({
-  plugins: [eslintPlugin()],
   server: {
-    host: 'localhost',
-    cors: '*',
-    allowedHosts: 'all',
+    host: "localhost",
+    cors: "*",
+    port: 3000,
+    allowedHosts: "all",
     hmr: {
-      protocol: 'wss',
+      protocol: "wss",
       clientPort: 443,
     },
   },
@@ -17,21 +16,20 @@ export default defineConfig({
     minify: true,
     manifest: true,
     rollupOptions: {
-      input: './src/main.ts',
+      input: "./src/main.ts",
       output: {
-        format: 'iife',
-        entryFileNames: 'main.js',
+        format: "iife",
+        entryFileNames: "main.js",
         inlineDynamicImports: true,
         compact: true,
         globals: {
-          jquery: '$',
+          jquery: "$",
         },
       },
-      external: ['jquery'],
+      external: ["jquery"],
     },
   },
   optimizeDeps: {
-    include: ['gsap', 'gsap/ScrollTrigger', 'gsap/SplitText'],
+    include: ["gsap", "gsap/ScrollTrigger", "gsap/SplitText"],
   },
-})
-
+});
