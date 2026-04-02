@@ -15,6 +15,34 @@ This is a a bun-based Webflow integration project that enables TypeScript develo
 - Code is built and hosted externally, then loaded into Webflow
 - Uses data attributes (`data-page`, `data-menu-toggle`, etc.) to connect with Webflow elements
 
+## Quick Structure (for fast setup)
+
+```txt
+Webflow <body data-page="home">
+            │
+            ▼
+src/pages/home.ts
+  name: "home"   ← must match data-page
+  features: [...]
+  init()         ← runs page features
+            │
+            ▼
+src/features/home/*.ts
+  init()         ← feature logic lives here
+
+src/features/global/*.ts
+  global: true   ← runs on every page
+  init()
+```
+
+### Rules
+
+- Set a page key in Webflow: `<body data-page="page_name">`
+- Create `/src/pages/page_name.ts`
+- In that file, set `name: "page_name"` (must be the same key)
+- Every feature must implement `init()`
+- If a feature should run on all pages, place it in `src/features/global/` and set `global: true`
+
 ### Feature-Based Architecture
 
 **Features** (`src/features/`):
