@@ -5,11 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build:pages": "tsc && bun run scripts/build.ts",
+    "build:dev": "tsc && vite build",
+    "preview:pages": "bun run build:pages && bunx serve dist -p 4173",
     "preview": "vite preview",
     "lint": "eslint . --fix"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.27.3",
     "@eslint/js": "^9.17.0",
     "eslint": "^9.17.0",
     "eslint-config-prettier": "^10.0.1",

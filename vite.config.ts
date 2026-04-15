@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 
-// vite.config.js
+// Dev server + legacy single-bundle only (npm run build).
+// Per-page production bundles → npm run build:pages (scripts/build.ts).
 export default defineConfig({
   server: {
     host: "localhost",
@@ -14,7 +15,6 @@ export default defineConfig({
   },
   build: {
     minify: true,
-    manifest: true,
     rollupOptions: {
       input: "./src/main.ts",
       output: {

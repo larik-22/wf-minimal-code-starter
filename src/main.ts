@@ -1,3 +1,5 @@
+// Dev entry point + legacy single-bundle (npm run build).
+// Production per-page bundles → npm run build:pages (scripts/build.ts).
 import "./styles/style.css";
 
 import type { Feature } from "./types/feature";
