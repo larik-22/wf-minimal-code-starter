@@ -1,13 +1,14 @@
 /// <reference types="node" />
-import * as esbuild from "esbuild";
 import {
-  readdirSync,
   existsSync,
+  mkdirSync,
+  readdirSync,
   rmSync,
   writeFileSync,
-  mkdirSync,
 } from "node:fs";
-import { resolve, basename, relative } from "node:path";
+import { basename, relative, resolve } from "node:path";
+
+import * as esbuild from "esbuild";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const SRC = resolve(ROOT, "src");
@@ -25,7 +26,7 @@ type Manifest = Record<string, PageManifest>;
 
 function virtualEntryPlugin(
   pages: string[],
-  globalFeaturePaths: string[],
+  globalFeaturePaths: string[]
 ): esbuild.Plugin {
   const NAMESPACE = "virtual-entry";
 
@@ -225,18 +226,20 @@ const fmt = (bytes: number) =>
 
 console.log("Done. Output:");
 console.log(
-  `  dist/main.js  (loader — add to Webflow site-wide)  ${fmt(Buffer.byteLength(minifiedLoader))}`,
+  `  dist/main.js  (loader — add to Webflow site-wide)  ${fmt(Buffer.byteLength(minifiedLoader))}`
 );
 
 for (const page of pages) {
   const entry = manifest[page]?.entry;
   if (!entry) continue;
-  const meta = outputs[`dist/${entry}`] ?? outputs[relative(ROOT, resolve(DIST, entry))];
+  const meta =
+    outputs[`dist/${entry}`] ?? outputs[relative(ROOT, resolve(DIST, entry))];
   const size = meta ? fmt(meta.bytes) : "?";
   console.log(`  dist/${entry}  ${size}`);
 
   for (const dep of manifest[page]?.deps ?? []) {
-    const depMeta = outputs[`dist/${dep}`] ?? outputs[relative(ROOT, resolve(DIST, dep))];
+    const depMeta =
+      outputs[`dist/${dep}`] ?? outputs[relative(ROOT, resolve(DIST, dep))];
     const depSize = depMeta ? fmt(depMeta.bytes) : "?";
     console.log(`    dist/${dep}  ${depSize}`);
   }

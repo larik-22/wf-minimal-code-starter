@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "deploy": "bun run build:pages && vercel --prod",
     "build:pages": "tsc && bun run scripts/build.ts",
     "build:dev": "tsc && vite build",
     "preview:pages": "bun run build:pages && bunx serve dist -p 4173",
@@ -12,9 +13,9 @@
     "lint": "eslint . --fix"
   },
   "devDependencies": {
+    "@eslint/js": "^9.17.0",
     "@types/node": "^22.0.0",
     "esbuild": "^0.27.3",
-    "@eslint/js": "^9.17.0",
     "eslint": "^9.17.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.1",
@@ -22,7 +23,8 @@
     "prettier": "^3.4.2",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.18.0",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vite-plugin-eslint": "^1.8.1"
   },
   "dependencies": {
     "gsap": "^3.14.2"

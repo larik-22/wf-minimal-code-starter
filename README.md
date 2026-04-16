@@ -2,6 +2,11 @@
 
 This is a a bun-based Webflow integration project that enables TypeScript development for Webflow websites. The compiled code is hosted on a CDN and loaded into Webflow sites via custom code blocks.
 
+We use cloudflare stable tunnel to route localhost code via https. This allows other people (designers, pm's, clients) to see the code changes in real time without deploying to prod.
+
+![Code lifecycle](public/webflow_code_lifecycle.svg)
+_Development Mental Model_
+
 ## Purpose
 
 - Provide a modern TypeScript development environment for Webflow projects
@@ -41,69 +46,51 @@ In Webflow, there are two possibilities:
 
 In both cases, you have the HMR (Hot Module Reload) in place, it allows you to refresh the page each time you save a TS file. It's convenient and it will save you time.
 
--   If you do both Webflow dev and TS:
+- If you do both Webflow dev and TS:
 
-    Paste this script into the `Before </body> tag` part of the Webflow custom code in the project settings so that it loads on all pages.
+  Paste this script into the `Before </body> tag` part of the Webflow custom code in the project settings so that it loads on all pages.
 
-    ```html
-    <script type="module" src="http://localhost:3000/@vite/client"></script>
-    <script type="module" src="http://localhost:3000/src/main.ts"></script>
-    ```
+  ```html
+  <script type="module" src="http://localhost:7777/@vite/client"></script>
+  <script type="module" src="http://localhost:7777/src/main.ts"></script>
+  ```
 
--   If you are doing the TS dev but not the Webflow dev (**recommended version**):
+- If you are doing the TS dev but not the Webflow dev (**recommended version**):
 
-    Paste this script in the `Before </body> tag` part of the Webflow custom code in the project settings so that it loads on all pages. We will change the url of Netlify later to load the production files.
+      Paste this script in the `Before </body> tag` part of the Webflow custom code in the project settings so that it loads on all pages. We will change the url of Netlify later to load the production files.
 
-    ```jsx
-    <script>
-      (function () {
-        const LOCALHOST_URL = [
-          'http://localhost:3000/@vite/client',
-          'http://localhost:3000/src/main.ts',
-        ]
-        const PROD_URL = ['https://MY-PROJECT.netlify.app/main.js']
+  ```jsx
+  <script>
+  (function () {
+    const TUNNEL_URL = 'https://your.cloudflared.tunnel.com'
+    const PROD_URL   = 'https://my-project.vercel.app'
 
-        function createScripts(arr, isDevMode) {
-          return arr.map(function (url) {
-            const s = document.createElement('script')
-            s.src = url
+    const DEV_SCRIPTS  = [TUNNEL_URL + '/@vite/client', TUNNEL_URL + '/src/main.ts']
+    const PROD_SCRIPTS = [PROD_URL + '/main.js']
 
-            if (isDevMode) {
-              s.type = 'module'
-            }
+    function createScripts(arr, isModule) {
+      return arr.map(function (url) {
+        const s = document.createElement('script')
+        s.src = url
+        if (isModule) s.type = 'module'
+        return s
+      })
+    }
 
-            return s
-          })
-        }
+    function insertScripts(arr) {
+      arr.forEach(function (s) { document.body.appendChild(s) })
+    }
 
-        function insertScript(scriptArr) {
-          scriptArr.forEach(function (script) {
-            document.body.appendChild(script)
-          })
-        }
-
-        const localhostScripts = createScripts(LOCALHOST_URL, true)
-        const prodScripts = createScripts(PROD_URL, false)
-
-        let choosedScripts = null
-
-        fetch(LOCALHOST_URL[0], {})
-          .then(() => {
-            choosedScripts = localhostScripts
-          })
-          .catch((e) => {
-            choosedScripts = prodScripts
-            console.error(e)
-          })
-          .finally(() => {
-            if (choosedScripts) {
-              insertScript(choosedScripts)
-
-              return
-            }
-
-            console.error('something went wrong, no scripts loaded')
-          })
-      })()
-    </script>
-    ```
+    // Probe the tunnel's vite client endpoint.
+    // If it responds → dev mode, load tunnel scripts (incl. HMR over wss).
+    // If it fails     → prod mode, load the built bundle from Vercel.
+    fetch(DEV_SCRIPTS[0], { mode: 'no-cors' })
+      .then(function () {
+        insertScripts(createScripts(DEV_SCRIPTS, true))
+      })
+      .catch(function () {
+        insertScripts(createScripts(PROD_SCRIPTS, false))
+      })
+  })()
+  </script>
+  ```
