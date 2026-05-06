@@ -39,34 +39,48 @@ function virtualEntryPlugin(
       }));
 
       build.onLoad({ filter: /.*/, namespace: NAMESPACE }, (args) => {
-        const page = args.path.replace("virtual-entry:", "");
-        if (!pages.includes(page)) return null;
+        const id = args.path.replace("virtual-entry:", "");
 
-        const globalImports = globalFeaturePaths
-          .map((p, i) => `import _g${i} from ${JSON.stringify(p)};`)
-          .join("\n");
+        if (id === "globals") {
+          const globalImports = globalFeaturePaths
+            .map((p, i) => `import _g${i} from ${JSON.stringify(p)};`)
+            .join("\n");
+          const globalRefs = globalFeaturePaths
+            .map((_, i) => `_g${i}`)
+            .join(", ");
 
-        const globalRefs = globalFeaturePaths
-          .map((_, i) => `_g${i}`)
-          .join(", ");
+          const code = [
+            globalImports,
+            "function initGlobals() {",
+            globalFeaturePaths.length > 0
+              ? `  [${globalRefs}].forEach(function (f) { f.init(); });`
+              : null,
+            "}",
+            'if (document.readyState === "loading") {',
+            '  document.addEventListener("DOMContentLoaded", initGlobals);',
+            "} else {",
+            "  initGlobals();",
+            "}",
+          ]
+            .filter((l) => l !== null)
+            .join("\n");
 
-        const pageEntry = resolve(SRC, "pages", `${page}.ts`);
+          return { contents: code, loader: "ts", resolveDir: ROOT };
+        }
+
+        if (!pages.includes(id)) return null;
+
+        const pageEntry = resolve(SRC, "pages", `${id}.ts`);
 
         const code = [
-          globalImports,
           `import _page from ${JSON.stringify(pageEntry)};`,
-          "",
-          "function initApp() {",
-          globalFeaturePaths.length > 0
-            ? `  [${globalRefs}].forEach(function (f) { f.init(); });`
-            : null,
+          "function initPage() {",
           "  _page.init();",
           "}",
-          "",
           'if (document.readyState === "loading") {',
-          '  document.addEventListener("DOMContentLoaded", initApp);',
+          '  document.addEventListener("DOMContentLoaded", initPage);',
           "} else {",
-          "  initApp();",
+          "  initPage();",
           "}",
         ]
           .filter((l) => l !== null)
@@ -122,20 +136,26 @@ function buildLoaderSource(manifest: Manifest): string {
       break;
     }
   }
-  var page = (document.body && document.body.dataset.page) || "home";
-  var config = manifest[page];
-  if (!config) return;
-  var files = [config.entry].concat(config.deps || []);
-  for (var j = 0; j < files.length; j++) {
-    var link = document.createElement("link");
-    link.rel = "modulepreload";
-    link.href = base + files[j];
-    document.head.appendChild(link);
+  
+  function loadEntry(config) {
+    if (!config) return;
+    var files = [config.entry].concat(config.deps || []);
+    for (var j = 0; j < files.length; j++) {
+      var link = document.createElement("link");
+      link.rel = "modulepreload";
+      link.href = base + files[j];
+      document.head.appendChild(link);
+    }
+    var script = document.createElement("script");
+    script.type = "module";
+    script.src = base + config.entry;
+    document.head.appendChild(script);
   }
-  var script = document.createElement("script");
-  script.type = "module";
-  script.src = base + config.entry;
-  document.head.appendChild(script);
+
+  loadEntry(manifest["globals"]);
+
+  var page = (document.body && document.body.dataset.page) || "home";
+  loadEntry(manifest[page]);
 })();`;
 }
 
@@ -182,6 +202,9 @@ console.log(`Global features: ${globalFeaturePaths.length}\n`);
 // them into chunks/[hash].js automatically — no duplication across page bundles.
 
 const entryPoints: Record<string, string> = {};
+if (globalFeaturePaths.length > 0) {
+  entryPoints["globals"] = "virtual-entry:globals";
+}
 for (const page of pages) {
   entryPoints[page] = `virtual-entry:${page}`;
 }
@@ -229,13 +252,18 @@ console.log(
   `  dist/main.js  (loader — add to Webflow site-wide)  ${fmt(Buffer.byteLength(minifiedLoader))}`
 );
 
-for (const page of pages) {
+for (const page of ["globals", ...pages]) {
   const entry = manifest[page]?.entry;
   if (!entry) continue;
   const meta =
     outputs[`dist/${entry}`] ?? outputs[relative(ROOT, resolve(DIST, entry))];
   const size = meta ? fmt(meta.bytes) : "?";
-  console.log(`  dist/${entry}  ${size}`);
+  
+  if (page === "globals") {
+    console.log(`  dist/${entry}  ${size}  (global features shared across pages)`);
+  } else {
+    console.log(`  dist/${entry}  ${size}`);
+  }
 
   for (const dep of manifest[page]?.deps ?? []) {
     const depMeta =

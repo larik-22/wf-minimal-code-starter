@@ -1,3 +1,3 @@
+- [ ] LOADER script with cloudflare temp https preview instead of localhost and prod fallback if no cloudflare is used. Custom domain can be <example.vercel.app> as it something that will be adjusted. Something simple. Opt in whether use localhost or cloudflare temp https preview through query params.
 - [ ] check prod builds and whether chunking is working fine
 - [ ] add project-specific skills, give AI better awareness on how to sync with webflow (use data-attr, patterns, etc)
-- [ ] LOADER script with cloudflare temp https preview instead of localhost and prod fallback if no cloudflare is used. Custom domain can be <example.vercel.app> as it something that will be adjusted. We need a way to have HMR for cloudflare temp https preview.
