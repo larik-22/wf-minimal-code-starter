@@ -4,6 +4,7 @@ import {
   mkdirSync,
   readdirSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { basename, relative, resolve } from "node:path";
@@ -178,6 +179,9 @@ const PREVIEW_HTML = /* html */ `<!doctype html>
 
 // ─── Setup ────────────────────────────────────────────────────────────────────
 
+const isWatch = process.argv.includes("--watch");
+const SERVE_PORT = 7778;
+
 rmSync(DIST, { recursive: true, force: true });
 mkdirSync(DIST, { recursive: true });
 
@@ -187,12 +191,41 @@ const pages = readdirSync(resolve(SRC, "pages"))
   .filter((f) => f.endsWith(".ts"))
   .map((f) => basename(f, ".ts"));
 
+// Recursively find feature entry files under a features/<scope> dir.
+// A .ts file is a feature entry iff one of:
+//   - it sits directly under the scope dir (flat:    features/global/foo.ts)
+//   - its basename is "index"               (nested: features/global/foo/index.ts)
+//   - its basename matches its parent dir   (nested: features/global/foo/foo.ts)
+// Anything else (helpers like test.ts, utils.ts) is ignored.
+function findFeatureEntries(scopeDir: string): string[] {
+  if (!existsSync(scopeDir)) return [];
+  const entries: string[] = [];
+
+  function walk(dir: string, depth: number) {
+    for (const name of readdirSync(dir)) {
+      const full = resolve(dir, name);
+      const stat = statSync(full);
+      if (stat.isDirectory()) {
+        walk(full, depth + 1);
+        continue;
+      }
+      if (!name.endsWith(".ts")) continue;
+      const base = basename(name, ".ts");
+      const parent = basename(dir);
+      const isFlatAtScopeRoot = depth === 0;
+      const isIndex = base === "index";
+      const matchesFolder = base === parent;
+      if (isFlatAtScopeRoot || isIndex || matchesFolder) {
+        entries.push(full);
+      }
+    }
+  }
+  walk(scopeDir, 0);
+  return entries;
+}
+
 const globalFeaturesDir = resolve(SRC, "features/global");
-const globalFeaturePaths: string[] = existsSync(globalFeaturesDir)
-  ? readdirSync(globalFeaturesDir)
-      .filter((f) => f.endsWith(".ts"))
-      .map((f) => resolve(globalFeaturesDir, f))
-  : [];
+const globalFeaturePaths: string[] = findFeatureEntries(globalFeaturesDir);
 
 console.log(`\nBuilding ${pages.length} page bundle(s): ${pages.join(", ")}`);
 console.log(`Global features: ${globalFeaturePaths.length}\n`);
@@ -209,9 +242,74 @@ for (const page of pages) {
   entryPoints[page] = `virtual-entry:${page}`;
 }
 
-const result = await esbuild.build({
+const fmt = (bytes: number) =>
+  bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
+
+let previousOutputs = new Set<string>();
+
+function writeOutputs(metafile: esbuild.Metafile) {
+  const manifest = buildManifest(metafile.outputs);
+  const loaderSource = buildLoaderSource(manifest);
+
+  const { code: minifiedLoader } = esbuild.transformSync(loaderSource, {
+    minify: true,
+    target: "es2019",
+  });
+
+  // remove stale hashed outputs from previous build (esbuild only writes new
+  // hashed files on rebuild; old ones would otherwise accumulate forever)
+  const currentOutputs = new Set(Object.keys(metafile.outputs));
+  for (const old of previousOutputs) {
+    if (!currentOutputs.has(old)) {
+      try {
+        rmSync(resolve(ROOT, old), { force: true });
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  previousOutputs = currentOutputs;
+
+  writeFileSync(resolve(DIST, "main.js"), minifiedLoader, "utf-8");
+  writeFileSync(resolve(DIST, "index.html"), PREVIEW_HTML, "utf-8");
+
+  const outputs = metafile.outputs;
+  console.log(
+    `\n[${new Date().toLocaleTimeString()}] build complete  loader=${fmt(Buffer.byteLength(minifiedLoader))}`
+  );
+  for (const page of ["globals", ...pages]) {
+    const entry = manifest[page]?.entry;
+    if (!entry) continue;
+    const meta =
+      outputs[`dist/${entry}`] ?? outputs[relative(ROOT, resolve(DIST, entry))];
+    const size = meta ? fmt(meta.bytes) : "?";
+    console.log(
+      `  dist/${entry}  ${size}${page === "globals" ? "  (globals)" : ""}`
+    );
+    for (const dep of manifest[page]?.deps ?? []) {
+      const depMeta =
+        outputs[`dist/${dep}`] ?? outputs[relative(ROOT, resolve(DIST, dep))];
+      console.log(`    dist/${dep}  ${depMeta ? fmt(depMeta.bytes) : "?"}`);
+    }
+  }
+  console.log();
+}
+
+const esbuildOptions: esbuild.BuildOptions & { metafile: true } = {
   entryPoints,
-  plugins: [virtualEntryPlugin(pages, globalFeaturePaths)],
+  plugins: [
+    virtualEntryPlugin(pages, globalFeaturePaths),
+    {
+      name: "post-build-outputs",
+      setup(build) {
+        build.onEnd((result) => {
+          if (result.errors.length === 0 && result.metafile) {
+            writeOutputs(result.metafile);
+          }
+        });
+      },
+    },
+  ],
   bundle: true,
   splitting: true, // extract shared code into chunks/; requires format: "esm"
   format: "esm",
@@ -226,50 +324,20 @@ const result = await esbuild.build({
   treeShaking: true,
   external: ["jquery"],
   logLevel: "warning",
-});
+};
 
-// ─── Manifest + loader ────────────────────────────────────────────────────────
-
-const manifest = buildManifest(result.metafile.outputs);
-
-const loaderSource = buildLoaderSource(manifest);
-const { code: minifiedLoader } = await esbuild.transform(loaderSource, {
-  minify: true,
-  target: "es2019", // slightly conservative for the loader itself
-});
-
-writeFileSync(resolve(DIST, "main.js"), minifiedLoader, "utf-8");
-writeFileSync(resolve(DIST, "index.html"), PREVIEW_HTML, "utf-8");
-
-// ─── Summary ──────────────────────────────────────────────────────────────────
-
-const outputs = result.metafile.outputs;
-const fmt = (bytes: number) =>
-  bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
-
-console.log("Done. Output:");
-console.log(
-  `  dist/main.js  (loader — add to Webflow site-wide)  ${fmt(Buffer.byteLength(minifiedLoader))}`
-);
-
-for (const page of ["globals", ...pages]) {
-  const entry = manifest[page]?.entry;
-  if (!entry) continue;
-  const meta =
-    outputs[`dist/${entry}`] ?? outputs[relative(ROOT, resolve(DIST, entry))];
-  const size = meta ? fmt(meta.bytes) : "?";
-  
-  if (page === "globals") {
-    console.log(`  dist/${entry}  ${size}  (global features shared across pages)`);
-  } else {
-    console.log(`  dist/${entry}  ${size}`);
-  }
-
-  for (const dep of manifest[page]?.deps ?? []) {
-    const depMeta =
-      outputs[`dist/${dep}`] ?? outputs[relative(ROOT, resolve(DIST, dep))];
-    const depSize = depMeta ? fmt(depMeta.bytes) : "?";
-    console.log(`    dist/${dep}  ${depSize}`);
-  }
+if (isWatch) {
+  const ctx = await esbuild.context(esbuildOptions);
+  await ctx.watch();
+  const { port } = await ctx.serve({
+    port: SERVE_PORT,
+    host: "0.0.0.0",
+    servedir: DIST,
+  });
+  console.log(
+    `\n[staging] watching src/ — serving dist/ at http://localhost:${port}/\n` +
+      `[staging] open Webflow with ?staging to load this bundle.\n`
+  );
+} else {
+  await esbuild.build(esbuildOptions);
 }
-console.log();

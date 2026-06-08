@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:tunnel": "VITE_TUNNEL_HMR=1 vite",
     "deploy": "bun run build:pages && vercel --prod",
     "build:pages": "tsc && bun run scripts/build.ts",
     "build:dev": "tsc && vite build",
     "preview:pages": "bun run build:pages && bunx serve dist -p 4173",
+    "staging": "bun run scripts/build.ts --watch",
     "preview": "vite preview",
     "lint": "eslint . --fix"
   },
@@ -27,6 +29,8 @@
     "vite-plugin-eslint": "^1.8.1"
   },
   "dependencies": {
-    "gsap": "^3.14.2"
+    "gsap": "^3.14.2",
+    "lenis": "^1.3.23",
+    "tempus": "^1.0.0-dev.17"
   }
 }

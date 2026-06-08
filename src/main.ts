@@ -16,28 +16,28 @@ const pageModules = import.meta.glob<{ default: Page }>("./pages/*.ts", {
   eager: true,
 });
 
-// Extract features from modules
-const allFeatures: Feature[] = Object.values(featureModules)
-  .map((module) => {
-    if (!module.default) {
-      console.warn(`Feature module has no default export`);
-      return null;
-    }
-    return module.default;
-  })
-  .filter((f): f is Feature => f !== null);
+// A file under features/ is a "feature entry" iff its default export has the
+// Feature shape ({ name, init }). Helpers like ./heroLoader/test.ts or
+// ./heroLoader/utils.ts have no Feature-shaped default and are silently skipped.
+const isFeature = (m: unknown): m is Feature =>
+  !!m &&
+  typeof (m as Feature).name === "string" &&
+  typeof (m as Feature).init === "function";
 
-// Extract pages and map by name
+const allFeatures: Feature[] = Object.values(featureModules)
+  .map((module) => module.default)
+  .filter(isFeature);
+
+const isPage = (m: unknown): m is Page =>
+  !!m &&
+  typeof (m as Page).name === "string" &&
+  typeof (m as Page).init === "function";
+
 const pages: Record<string, Page> = Object.fromEntries(
   Object.values(pageModules)
-    .map((module) => {
-      if (!module.default) {
-        console.warn(`Page module has no default export`);
-        return null;
-      }
-      return [module.default.name, module.default];
-    })
-    .filter((entry): entry is [string, Page] => entry !== null)
+    .map((module) => module.default)
+    .filter(isPage)
+    .map((page) => [page.name, page] as const)
 );
 
 // Global features that run on all pages
