@@ -1,5 +1,6 @@
-import homeFeature from "../features/home/exampleFeature";
 import type { Page } from "../types/page";
+
+import homeFeature from "../features/home/exampleFeature";
 
 const homePage: Page = {
   name: "home",

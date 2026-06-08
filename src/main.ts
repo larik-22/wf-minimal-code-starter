@@ -6,10 +6,9 @@ import type { Feature } from "./types/feature";
 import type { Page } from "./types/page";
 
 // Import all feature files from nested folders
-const featureModules = import.meta.glob<{ default: Feature }>(
-  "./features/**/*.ts",
-  { eager: true }
-);
+const featureModules = import.meta.glob<{ default: Feature }>("./features/**/*.ts", {
+  eager: true,
+});
 
 // Import all page files
 const pageModules = import.meta.glob<{ default: Page }>("./pages/*.ts", {
@@ -20,18 +19,14 @@ const pageModules = import.meta.glob<{ default: Page }>("./pages/*.ts", {
 // Feature shape ({ name, init }). Helpers like ./heroLoader/test.ts or
 // ./heroLoader/utils.ts have no Feature-shaped default and are silently skipped.
 const isFeature = (m: unknown): m is Feature =>
-  !!m &&
-  typeof (m as Feature).name === "string" &&
-  typeof (m as Feature).init === "function";
+  !!m && typeof (m as Feature).name === "string" && typeof (m as Feature).init === "function";
 
 const allFeatures: Feature[] = Object.values(featureModules)
   .map((module) => module.default)
   .filter(isFeature);
 
 const isPage = (m: unknown): m is Page =>
-  !!m &&
-  typeof (m as Page).name === "string" &&
-  typeof (m as Page).init === "function";
+  !!m && typeof (m as Page).name === "string" && typeof (m as Page).init === "function";
 
 const pages: Record<string, Page> = Object.fromEntries(
   Object.values(pageModules)
@@ -57,10 +52,7 @@ function initApp(): void {
     console.log("Initializing page:", currentPage.name);
     currentPage.init();
   } else {
-    console.warn(
-      `Page "${currentPageName}" not found. Available pages:`,
-      Object.keys(pages)
-    );
+    console.warn(`Page "${currentPageName}" not found. Available pages:`, Object.keys(pages));
   }
 }
 

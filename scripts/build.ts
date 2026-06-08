@@ -1,12 +1,5 @@
 /// <reference types="node" />
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, relative, resolve } from "node:path";
 
 import * as esbuild from "esbuild";
@@ -25,10 +18,7 @@ type Manifest = Record<string, PageManifest>;
 // Each virtual module imports all global features then the page module,
 // and calls initApp() on DOMContentLoaded.
 
-function virtualEntryPlugin(
-  pages: string[],
-  globalFeaturePaths: string[]
-): esbuild.Plugin {
+function virtualEntryPlugin(pages: string[], globalFeaturePaths: string[]): esbuild.Plugin {
   const NAMESPACE = "virtual-entry";
 
   return {
@@ -46,9 +36,7 @@ function virtualEntryPlugin(
           const globalImports = globalFeaturePaths
             .map((p, i) => `import _g${i} from ${JSON.stringify(p)};`)
             .join("\n");
-          const globalRefs = globalFeaturePaths
-            .map((_, i) => `_g${i}`)
-            .join(", ");
+          const globalRefs = globalFeaturePaths.map((_, i) => `_g${i}`).join(", ");
 
           const code = [
             globalImports,
@@ -242,8 +230,7 @@ for (const page of pages) {
   entryPoints[page] = `virtual-entry:${page}`;
 }
 
-const fmt = (bytes: number) =>
-  bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
+const fmt = (bytes: number) => (bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`);
 
 let previousOutputs = new Set<string>();
 
@@ -280,15 +267,11 @@ function writeOutputs(metafile: esbuild.Metafile) {
   for (const page of ["globals", ...pages]) {
     const entry = manifest[page]?.entry;
     if (!entry) continue;
-    const meta =
-      outputs[`dist/${entry}`] ?? outputs[relative(ROOT, resolve(DIST, entry))];
+    const meta = outputs[`dist/${entry}`] ?? outputs[relative(ROOT, resolve(DIST, entry))];
     const size = meta ? fmt(meta.bytes) : "?";
-    console.log(
-      `  dist/${entry}  ${size}${page === "globals" ? "  (globals)" : ""}`
-    );
+    console.log(`  dist/${entry}  ${size}${page === "globals" ? "  (globals)" : ""}`);
     for (const dep of manifest[page]?.deps ?? []) {
-      const depMeta =
-        outputs[`dist/${dep}`] ?? outputs[relative(ROOT, resolve(DIST, dep))];
+      const depMeta = outputs[`dist/${dep}`] ?? outputs[relative(ROOT, resolve(DIST, dep))];
       console.log(`    dist/${dep}  ${depMeta ? fmt(depMeta.bytes) : "?"}`);
     }
   }

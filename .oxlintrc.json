@@ -1,0 +1,42 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "import", "unicorn"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "env": {
+    "browser": true,
+    "es2024": true
+  },
+  "rules": {
+    // --- Modern JS enforcement (auto-fixable on save) ---
+    "prefer-const": "warn",
+    "no-var": "warn",
+    "eqeqeq": "warn",
+
+    // --- Catch common mistakes ---
+    "no-debugger": "warn",
+    "no-empty": "warn",
+    "no-extra-boolean-cast": "warn",
+    "no-self-compare": "error",
+    "no-template-curly-in-string": "warn",
+    "no-unreachable": "error",
+
+    // --- TS quality ---
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-non-null-assertion": "warn",
+
+    // --- Import hygiene ---
+    "import/no-duplicates": "warn",
+    "import/no-unassigned-import": "off",
+
+    // --- Unicorn niceties (auto-fixable) ---
+    "unicorn/prefer-dom-node-text-content": "warn",
+    "unicorn/prefer-query-selector": "warn",
+    "unicorn/prefer-add-event-listener": "warn",
+    "unicorn/no-array-for-each": "off"
+  },
+  "ignorePatterns": ["dist/**", "node_modules/**", "*.min.js"]
+}

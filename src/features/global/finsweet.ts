@@ -125,10 +125,7 @@ export class FinsweetService {
     });
   }
 
-  private registerHookInternal(
-    phase: string,
-    callback: (listInstance: any, items: any[]) => any[]
-  ): void {
+  private registerHookInternal(phase: string, callback: (listInstance: any, items: any[]) => any[]): void {
     this.whenListReady<any>().then((listsApi) => {
       const instances: any[] = Array.isArray(listsApi)
         ? listsApi
@@ -179,9 +176,7 @@ export class FinsweetService {
         ? Object.values(listsApi)
         : [];
 
-    const targetList = listArray.find((list) =>
-      list?.listElement?.attributes.getNamedItem(attribute)
-    ) as any;
+    const targetList = listArray.find((list) => list?.listElement?.attributes.getNamedItem(attribute)) as any;
 
     if (!targetList) return undefined;
 
@@ -191,12 +186,9 @@ export class FinsweetService {
     // length before loaders
     const loaders: Promise<void>[] = [];
 
-    if (targetList.loadingSearchParamsData)
-      loaders.push(targetList.loadingSearchParamsData);
-    if (targetList.loadingPaginationElements)
-      loaders.push(targetList.loadingPaginationElements);
-    if (targetList.loadingPaginatedItems)
-      loaders.push(targetList.loadingPaginatedItems);
+    if (targetList.loadingSearchParamsData) loaders.push(targetList.loadingSearchParamsData);
+    if (targetList.loadingPaginationElements) loaders.push(targetList.loadingPaginationElements);
+    if (targetList.loadingPaginatedItems) loaders.push(targetList.loadingPaginatedItems);
 
     // Wait for every promise (ignore undefined values) to resolve.
     if (loaders.length) {
@@ -216,30 +208,19 @@ export class FinsweetService {
    * removed. This keeps the source-of-truth inside Finsweet in sync when the
    * dataset (mode) changes.
    */
-  public clearFiltersExceptFor(
-    listInstance: any,
-    exceptFor: string[] = []
-  ): void {
+  public clearFiltersExceptFor(listInstance: any, exceptFor: string[] = []): void {
     if (!listInstance) return;
 
     const filtersGroup = listInstance?.filters?.value?.groups?.[0];
     if (!filtersGroup) return;
 
-    const typeCondition = filtersGroup.conditions.find((c: any) =>
-      exceptFor?.includes(c.fieldKey)
-    );
+    const typeCondition = filtersGroup.conditions.find((c: any) => exceptFor?.includes(c.fieldKey));
 
     if (typeCondition) {
       const plainTypeCondition = JSON.parse(JSON.stringify(typeCondition));
-      filtersGroup.conditions.splice(
-        0,
-        filtersGroup.conditions.length,
-        plainTypeCondition
-      );
+      filtersGroup.conditions.splice(0, filtersGroup.conditions.length, plainTypeCondition);
     } else {
-      console.warn(
-        `[FinsweetService] No condition found. Clearing all filters.`
-      );
+      console.warn(`[FinsweetService] No condition found. Clearing all filters.`);
       filtersGroup.conditions.splice(0, filtersGroup.conditions.length);
     }
   }
@@ -249,10 +230,7 @@ export class FinsweetService {
    * @param listInstance – the list instance to clear filters for
    * @param specificConditionKeys – the condition keys to remove (if empty, removes all)
    */
-  public clearFilters(
-    listInstance: any,
-    specificConditionKeys: string[] = []
-  ): void {
+  public clearFilters(listInstance: any, specificConditionKeys: string[] = []): void {
     if (!listInstance) return;
 
     const filtersGroup = listInstance?.filters?.value?.groups?.[0];
@@ -266,10 +244,7 @@ export class FinsweetService {
       // IMPORTANT, this is a vue ref so DataCloneERROR can happen, we can't use .filter
       for (const condition of filtersGroup.conditions) {
         if (specificConditionKeys.includes(condition.fieldKey)) {
-          filtersGroup.conditions.splice(
-            filtersGroup.conditions.indexOf(condition),
-            1
-          );
+          filtersGroup.conditions.splice(filtersGroup.conditions.indexOf(condition), 1);
         }
       }
     }
@@ -281,9 +256,7 @@ export class FinsweetService {
       const controls = global.modules?.[key];
       if (controls) {
         const maybePromise = controls.loading;
-        return maybePromise && typeof maybePromise.then === "function"
-          ? maybePromise
-          : Promise.resolve(maybePromise);
+        return maybePromise && typeof maybePromise.then === "function" ? maybePromise : Promise.resolve(maybePromise);
       }
     }
     return undefined;
